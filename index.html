@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="./resources/ol.css">
+        <link rel="stylesheet" href="resources/fontawesome-all.min.css">
+        <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
+        <link rel="stylesheet" href="./resources/qgis2web.css">
+        <style>
+        html, body {
+            background-color: #ffffff;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Estilos para os botões de atributos */
+        .attribute-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            padding: 5px 0;
+        }
+
+        .attribute-button {
+            padding: 8px 5px;
+            font-size: 12px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background-color: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .attribute-button:hover {
+            background-color: #e8f5e9;
+            border-color: #4CAF50;
+        }
+
+        .attribute-button.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        /* Estilos para a sidebar */
+        .sidebar {
+            width: 250px;
+            padding: 10px;
+            background-color: #ffffff;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .sidebar h2 {
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            padding-bottom: 5px;
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        /* Estilos para a legenda */
+        .legend-section {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+
+        .legend-item {
+            margin-bottom: 10px;
+        }
+
+        .legend-item h3 {
+            font-size: 12px;
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+
+        .legend-intervals {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 5px;
+        }
+
+        .legend-interval {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            flex-shrink: 0;
+        }
+
+        .legend-label {
+            font-size: 11px;
+            color: #666;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .legend-label span:first-child {
+            font-weight: bold;
+        }
+
+        /* Estilos para o container principal */
+        .main-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Estilo para o mapa */
+        #map {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            background-color: #ffffff;
+        }
+
+        /* Estilos para a seção de método */
+        .method-section {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+
+        .method-section h2 {
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            padding-bottom: 5px;
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        .method-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+        }
+
+        .method-button {
+            padding: 8px 5px;
+            font-size: 12px;
+            text-align: center;
+            background-color: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .method-button:hover {
+            background-color: #e8f5e9;
+            border-color: #4CAF50;
+        }
+
+        .method-button.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        /* Estilos para o botão de toggle da sidebar em mobile */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #45a049;
+        }
+
+        /* Media query para dispositivos móveis */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                z-index: 999;
+                background-color: white;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .sidebar-toggle {
+                display: block;
+            }
+
+            .map-container {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .main-container {
+                margin-left: 0;
+            }
+        }
+
+        /* Estilos para o controlador de zoom */
+        .ol-zoom-right {
+            right: 8px !important;
+            left: auto !important;
+        }
+
+        .ol-zoom button {
+            background-color: #4CAF50 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 4px !important;
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 18px !important;
+            line-height: 1 !important;
+            margin: 2px !important;
+            padding: 0 !important;
+            cursor: pointer !important;
+        }
+
+        .ol-zoom button:hover {
+            background-color: #45a049 !important;
+        }
+
+        .ol-zoom button:focus {
+            outline: none !important;
+        }
+        </style>
+        <title>Análise de Fertilidade do Solo</title>
+    </head>
+    <body>
+        <!-- Adicionar botão de toggle -->
+        <button class="sidebar-toggle" id="sidebarToggle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+
+        <div class="main-container">
+            <div class="sidebar">
+                <h2>Atributos de Fertilidade</h2>
+                <div class="layers-section">
+                    <div class="attribute-buttons">
+                        <button class="attribute-button active" data-attribute="SMP">SMP</button>
+                        <button class="attribute-button" data-attribute="pH">pH</button>
+                        <button class="attribute-button" data-attribute="MO">Matéria Orgânica (MO)</button>
+                        <button class="attribute-button" data-attribute="P">Fósforo (P)</button>
+                        <button class="attribute-button" data-attribute="K">Potássio (K)</button>
+                        <button class="attribute-button" data-attribute="Ca">Cálcio (Ca)</button>
+                        <button class="attribute-button" data-attribute="Mg">Magnésio (Mg)</button>
+                        <button class="attribute-button" data-attribute="Al">Alumínio (Al)</button>
+                        <button class="attribute-button" data-attribute="Mn">Manganês (Mn)</button>
+                        <button class="attribute-button" data-attribute="Cu">Cobre (Cu)</button>
+                        <button class="attribute-button" data-attribute="B">Boro (B)</button>
+                        <button class="attribute-button" data-attribute="S">Enxofre (S)</button>
+                        <button class="attribute-button" data-attribute="Zn">Zinco (Zn)</button>
+                        <button class="attribute-button" data-attribute="Argila">Argila</button>
+                    </div>
+                </div>
+
+                <!-- Nova seção de método -->
+                <div class="method-section">
+                    <h2>Método</h2>
+                    <div class="method-buttons">
+                        <button class="method-button active" data-method="discreto">Discreto</button>
+                        <button class="method-button" data-method="linear">Linear</button>
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <h2>Legenda</h2>
+                    <div class="legend-item">
+                        <h3>Interpretação dos Valores</h3>
+                        <p>Os valores são apresentados em diferentes escalas de cores, onde:</p>
+                        <div>
+                            <span class="legend-color" style="background-color: #ff0000;"></span>
+                            <span class="legend-label">Valores Baixos</span>
+                        </div>
+                        <div>
+                            <span class="legend-color" style="background-color: #ffff00;"></span>
+                            <span class="legend-label">Valores Médios</span>
+                        </div>
+                        <div>
+                            <span class="legend-color" style="background-color: #00ff00;"></span>
+                            <span class="legend-label">Valores Altos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <script src="resources/proj4.js"></script>
+        <script src="./resources/ol.js"></script>
+        <script>
+            // Definir a projeção UTM
+            proj4.defs('EPSG:31981','+proj=utm +zone=21 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+            ol.proj.proj4.register(proj4);
+
+            // Configuração dos intervalos para cada atributo
+            const legendConfig = {
+                'SMP': {
+                    title: 'SMP (Índice SMP)',
+                    intervals: [
+                        { min: 0, max: 4.5, color: '#ff0000', label: 'Muito Ácido' },
+                        { min: 4.5, max: 5.5, color: '#ff9900', label: 'Ácido' },
+                        { min: 5.5, max: 6.5, color: '#ffff00', label: 'Moderadamente Ácido' },
+                        { min: 6.5, max: 7.5, color: '#99ff00', label: 'Neutro' },
+                        { min: 7.5, max: 8.5, color: '#00ff00', label: 'Alcalino' },
+                        { min: 8.5, max: 14, color: '#00cc00', label: 'Muito Alcalino' }
+                    ]
+                },
+                'pH': {
+                    title: 'pH',
+                    intervals: [
+                        { min: 0, max: 4.5, color: '#ff0000', label: 'Muito Ácido' },
+                        { min: 4.5, max: 5.5, color: '#ff9900', label: 'Ácido' },
+                        { min: 5.5, max: 6.5, color: '#ffff00', label: 'Moderadamente Ácido' },
+                        { min: 6.5, max: 7.5, color: '#99ff00', label: 'Neutro' },
+                        { min: 7.5, max: 8.5, color: '#00ff00', label: 'Alcalino' },
+                        { min: 8.5, max: 14, color: '#00cc00', label: 'Muito Alcalino' }
+                    ]
+                },
+                'MO': {
+                    title: 'Matéria Orgânica (%)',
+                    intervals: [
+                        { min: 0, max: 1, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 1, max: 2, color: '#ff9900', label: 'Baixo' },
+                        { min: 2, max: 3, color: '#ffff00', label: 'Médio' },
+                        { min: 3, max: 5, color: '#99ff00', label: 'Bom' },
+                        { min: 5, max: 10, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'P': {
+                    title: 'Fósforo (mg/dm³)',
+                    intervals: [
+                        { min: 0, max: 5, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 5, max: 10, color: '#ff9900', label: 'Baixo' },
+                        { min: 10, max: 20, color: '#ffff00', label: 'Médio' },
+                        { min: 20, max: 30, color: '#99ff00', label: 'Bom' },
+                        { min: 30, max: 100, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'K': {
+                    title: 'Potássio (mg/dm³)',
+                    intervals: [
+                        { min: 0, max: 30, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 30, max: 60, color: '#ff9900', label: 'Baixo' },
+                        { min: 60, max: 120, color: '#ffff00', label: 'Médio' },
+                        { min: 120, max: 240, color: '#99ff00', label: 'Bom' },
+                        { min: 240, max: 1000, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'Ca': {
+                    title: 'Cálcio (cmolc/dm³)',
+                    intervals: [
+                        { min: 0, max: 1, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 1, max: 2, color: '#ff9900', label: 'Baixo' },
+                        { min: 2, max: 4, color: '#ffff00', label: 'Médio' },
+                        { min: 4, max: 6, color: '#99ff00', label: 'Bom' },
+                        { min: 6, max: 20, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'Mg': {
+                    title: 'Magnésio (cmolc/dm³)',
+                    intervals: [
+                        { min: 0, max: 0.5, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 0.5, max: 1, color: '#ff9900', label: 'Baixo' },
+                        { min: 1, max: 2, color: '#ffff00', label: 'Médio' },
+                        { min: 2, max: 3, color: '#99ff00', label: 'Bom' },
+                        { min: 3, max: 10, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'Al': {
+                    title: 'Alumínio (cmolc/dm³)',
+                    intervals: [
+                        { min: 0, max: 0.5, color: '#00ff00', label: 'Baixo' },
+                        { min: 0.5, max: 1, color: '#99ff00', label: 'Médio' },
+                        { min: 1, max: 2, color: '#ffff00', label: 'Alto' },
+                        { min: 2, max: 5, color: '#ff9900', label: 'Muito Alto' },
+                        { min: 5, max: 20, color: '#ff0000', label: 'Extremamente Alto' }
+                    ]
+                },
+                'Mn': {
+                    title: 'Manganês (mg/dm³)',
+                    intervals: [
+                        { min: 0, max: 5, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 5, max: 10, color: '#ff9900', label: 'Baixo' },
+                        { min: 10, max: 20, color: '#ffff00', label: 'Médio' },
+                        { min: 20, max: 30, color: '#99ff00', label: 'Bom' },
+                        { min: 30, max: 100, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'Cu': {
+                    title: 'Cobre (mg/dm³)',
+                    intervals: [
+                        { min: 0, max: 0.5, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 0.5, max: 1, color: '#ff9900', label: 'Baixo' },
+                        { min: 1, max: 2, color: '#ffff00', label: 'Médio' },
+                        { min: 2, max: 3, color: '#99ff00', label: 'Bom' },
+                        { min: 3, max: 10, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'B': {
+                    title: 'Boro (mg/dm³)',
+                    intervals: [
+                        { min: 0, max: 0.2, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 0.2, max: 0.5, color: '#ff9900', label: 'Baixo' },
+                        { min: 0.5, max: 1, color: '#ffff00', label: 'Médio' },
+                        { min: 1, max: 2, color: '#99ff00', label: 'Bom' },
+                        { min: 2, max: 5, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'S': {
+                    title: 'Enxofre (mg/dm³)',
+                    intervals: [
+                        { min: 0, max: 5, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 5, max: 10, color: '#ff9900', label: 'Baixo' },
+                        { min: 10, max: 20, color: '#ffff00', label: 'Médio' },
+                        { min: 20, max: 30, color: '#99ff00', label: 'Bom' },
+                        { min: 30, max: 100, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'Zn': {
+                    title: 'Zinco (mg/dm³)',
+                    intervals: [
+                        { min: 0, max: 0.5, color: '#ff0000', label: 'Muito Baixo' },
+                        { min: 0.5, max: 1, color: '#ff9900', label: 'Baixo' },
+                        { min: 1, max: 2, color: '#ffff00', label: 'Médio' },
+                        { min: 2, max: 3, color: '#99ff00', label: 'Bom' },
+                        { min: 3, max: 10, color: '#00ff00', label: 'Muito Bom' }
+                    ]
+                },
+                'Argila': {
+                    title: 'Argila (%)',
+                    intervals: [
+                        { min: 0, max: 15, color: '#ff0000', label: 'Arenoso' },
+                        { min: 15, max: 35, color: '#ff9900', label: 'Médio' },
+                        { min: 35, max: 60, color: '#ffff00', label: 'Argiloso' },
+                        { min: 60, max: 100, color: '#00ff00', label: 'Muito Argiloso' }
+                    ]
+                }
+            };
+
+            // Função para atualizar a legenda
+            function updateLegend(attribute) {
+                const legendSection = document.querySelector('.legend-section');
+                const config = legendConfig[attribute];
+                
+                if (!config) return;
+
+                let legendHTML = `
+                    <h2>Legenda</h2>
+                    <div class="legend-item">
+                        <h3>${config.title}</h3>
+                        <div class="legend-intervals">
+                `;
+
+                config.intervals.forEach(interval => {
+                    legendHTML += `
+                        <div class="legend-interval">
+                            <span class="legend-color" style="background-color: ${interval.color};"></span>
+                            <span class="legend-label">
+                                <span>${interval.min}-${interval.max}</span>
+                                <span>${interval.label}</span>
+                            </span>
+                        </div>
+                    `;
+                });
+
+                legendHTML += `
+                        </div>
+                    </div>
+                `;
+
+                legendSection.innerHTML = legendHTML;
+            }
+
+            // Variável global para armazenar o mapa
+            let map;
+            let currentLayer = null;
+
+            // Adicionar variável para controlar o método atual
+            let currentMethod = 'discreto';
+
+            // Função para atualizar a camada do mapa
+            function updateMapLayer(attribute) {
+                // Remover a camada atual se existir
+                if (currentLayer) {
+                    map.removeLayer(currentLayer);
+                    currentLayer = null;
+                }
+
+                // Definir a extensão da imagem
+                const imageExtent = [497235.869610, 6712247.784580, 506519.854760, 6721476.695520];
+
+                // Determinar o sufixo do arquivo baseado no método
+                const fileSuffix = currentMethod === 'linear' ? '_L' : '';
+                const imagePath = `./layers/${attribute}${fileSuffix}.png`;
+
+                // Criar nova camada de imagem
+                const newLayer = new ol.layer.Image({
+                    extent: imageExtent,
+                    source: new ol.source.ImageStatic({
+                        url: imagePath,
+                        imageExtent: imageExtent
+                    })
+                });
+
+                // Verificar se a imagem carrega corretamente
+                const img = new Image();
+                img.onload = function() {
+                    map.addLayer(newLayer);
+                    currentLayer = newLayer;
+                    // Ajustar o zoom para mostrar a imagem completa
+                    map.getView().fit(imageExtent, {
+                        padding: [50, 50, 50, 50],
+                        duration: 1000,
+                        maxZoom: 19
+                    });
+                };
+                img.onerror = function() {
+                    console.error('Erro ao carregar a imagem:', imagePath);
+                    alert('Erro ao carregar a imagem. Verifique se o arquivo existe.');
+                };
+                img.src = imagePath;
+            }
+
+            // Função para inicializar o mapa
+            function initMap() {
+                // Definir a projeção UTM
+                proj4.defs("EPSG:31981", "+proj=utm +zone=21 +south +datum=WGS84 +units=m +no_defs");
+                ol.proj.proj4.register(proj4);
+
+                // Criar camada base do Google Maps
+                const googleLayer = new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                        attributions: '© Google'
+                    })
+                });
+
+                // Inicializar o mapa
+                map = new ol.Map({
+                    target: 'map',
+                    layers: [googleLayer],
+                    view: new ol.View({
+                        center: ol.proj.fromLonLat([-51.5, -25.5]),
+                        zoom: 8,
+                        projection: 'EPSG:31981'
+                    }),
+                    controls: ol.control.defaults({
+                        zoom: false, // Desabilita o controlador de zoom padrão
+                        attribution: false // Desabilita a atribuição padrão
+                    }).extend([
+                        new ol.control.Zoom({
+                            className: 'ol-zoom ol-zoom-right', // Adiciona classe para posicionar à direita
+                            target: document.getElementById('map')
+                        }),
+                        new ol.control.ScaleLine({
+                            units: 'metric',
+                            target: document.getElementById('map')
+                        })
+                    ])
+                });
+            }
+
+            // Modificar o evento DOMContentLoaded para incluir os botões de método
+            document.addEventListener('DOMContentLoaded', function() {
+                // Inicializar o mapa
+                initMap();
+
+                const attributeButtons = document.querySelectorAll('.attribute-button');
+                const methodButtons = document.querySelectorAll('.method-button');
+                const sidebar = document.querySelector('.sidebar');
+                const sidebarToggle = document.getElementById('sidebarToggle');
+                
+                // Evento para os botões de atributos
+                attributeButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        attributeButtons.forEach(btn => btn.classList.remove('active'));
+                        this.classList.add('active');
+                        const selectedAttribute = this.getAttribute('data-attribute');
+                        updateMapLayer(selectedAttribute);
+                        updateLegend(selectedAttribute);
+                    });
+                });
+
+                // Evento para os botões de método
+                methodButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        methodButtons.forEach(btn => btn.classList.remove('active'));
+                        this.classList.add('active');
+                        currentMethod = this.getAttribute('data-method');
+                        // Atualizar a camada com o método selecionado
+                        const activeAttribute = document.querySelector('.attribute-button.active').getAttribute('data-attribute');
+                        updateMapLayer(activeAttribute);
+                    });
+                });
+
+                // Adicionar evento para o botão de toggle da sidebar
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                });
+
+                // Fechar a sidebar ao clicar fora dela em dispositivos móveis
+                document.addEventListener('click', function(event) {
+                    if (window.innerWidth <= 768) {
+                        if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                            sidebar.classList.remove('active');
+                        }
+                    }
+                });
+
+                // Carregar a primeira camada por padrão (SMP com método discreto)
+                const smpButton = document.querySelector('.attribute-button[data-attribute="SMP"]');
+                if (smpButton) {
+                    smpButton.click();
+                }
+            });
+        </script>
+    </body>
+</html>
